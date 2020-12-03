@@ -15,8 +15,11 @@ import com.facebook.ads.NativeAdViewAttributes;
 import com.facebook.ads.NativeBannerAd;
 import com.facebook.ads.NativeBannerAdView;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
+import io.flutter.Log;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.StandardMessageCodec;
@@ -41,6 +44,8 @@ class FacebookNativeAdPlugin extends PlatformViewFactory {
 
 class FacebookNativeAdView implements PlatformView, NativeAdListener {
 
+    static List<NativeBannerAd> listBanner = new ArrayList();
+    static List<NativeAd> listNative = new ArrayList();
     private LinearLayout adView;
 
     private final MethodChannel channel;
@@ -52,6 +57,7 @@ class FacebookNativeAdView implements PlatformView, NativeAdListener {
 
     FacebookNativeAdView(Context context, int id, HashMap args, BinaryMessenger messenger) {
 
+
         adView = new LinearLayout(context);
 
         this.channel = new MethodChannel(messenger,
@@ -59,21 +65,113 @@ class FacebookNativeAdView implements PlatformView, NativeAdListener {
 
         this.args = args;
         this.context = context;
-
         if ((boolean) args.get("banner_ad")) {
-            bannerAd = new NativeBannerAd(context, (String) this.args.get("id"));
-            NativeAdBase.NativeLoadAdConfig loadAdConfig = bannerAd.buildLoadAdConfig().withAdListener(this).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
-
-            bannerAd.loadAd(loadAdConfig);
+            if(listBanner.size() == 0){
+                bannerAd = new NativeBannerAd(context, (String) this.args.get("id"));
+                NativeAdBase.NativeLoadAdConfig loadAdConfig = bannerAd.buildLoadAdConfig().withAdListener(this).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
+                bannerAd.loadAd(loadAdConfig);
+                loadNativeBannerAds(channel);
+            }else{
+                bannerAd = listBanner.remove(0);
+                adView.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        showNativeAd();
+                    }
+                }, 200);
+            }
+            loadNativeBannerAds(channel);
         } else {
-            nativeAd = new NativeAd(context, (String) this.args.get("id"));
-            NativeAdBase.NativeLoadAdConfig loadAdConfig = nativeAd.buildLoadAdConfig().withAdListener(this).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
+            if(listNative.size() == 0){
+                nativeAd = new NativeAd(context, (String) this.args.get("id"));
+                NativeAdBase.NativeLoadAdConfig loadAdConfig = nativeAd.buildLoadAdConfig().withAdListener(this).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
+                nativeAd.loadAd(loadAdConfig);
+                loadNativeAds(channel);
+            }else {
+                nativeAd = listNative.remove(0);
+                adView.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        showNativeAd();
+                    }
+                }, 200);
+            }
+            loadNativeAds(channel);
 
-            nativeAd.loadAd(loadAdConfig);
         }
+    }
 
-        // if (args.get("bg_color") != null)
-        //     adView.setBackgroundColor(Color.parseColor((String) args.get("bg_color")));
+    private void loadNativeBannerAds(final MethodChannel channel1){
+        NativeBannerAd _bannerAd = new NativeBannerAd(context, (String) this.args.get("id"));
+        NativeAdBase.NativeLoadAdConfig loadAdConfig = _bannerAd.buildLoadAdConfig().withAdListener(new NativeAdListener() {
+            @Override
+            public void onMediaDownloaded(Ad ad) {
+
+            }
+
+            @Override
+            public void onError(Ad ad, AdError adError) {
+                Log.e("FanBanner", adError.getErrorMessage());
+            }
+
+            @Override
+            public void onAdLoaded(Ad ad) {
+                Log.e("FanBanner", "Loaded");
+                listBanner.add((NativeBannerAd)ad);
+                HashMap<String, Object> args = new HashMap<>();
+                args.put("nativeBannerCached", listBanner.size());
+                args.put("nativeCached", listNative.size());
+                channel1.invokeMethod(FacebookConstants.LOAD_SUCCESS_METHOD, args);
+            }
+
+            @Override
+            public void onAdClicked(Ad ad) {
+
+            }
+
+            @Override
+            public void onLoggingImpression(Ad ad) {
+
+            }
+        }).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
+
+        _bannerAd.loadAd(loadAdConfig);
+    }
+
+    private void loadNativeAds(final MethodChannel channel1){
+        NativeAd _nativeAd = new NativeAd(context, (String) this.args.get("id"));
+        NativeAdBase.NativeLoadAdConfig loadAdConfig = _nativeAd.buildLoadAdConfig().withAdListener(new NativeAdListener() {
+            @Override
+            public void onMediaDownloaded(Ad ad) {
+
+            }
+
+            @Override
+            public void onError(Ad ad, AdError adError) {
+
+            }
+
+            @Override
+            public void onAdLoaded(Ad ad) {
+                listNative.add((NativeAd)ad);
+                HashMap<String, Object> args = new HashMap<>();
+                args.put("nativeBannerCached", listBanner.size());
+                args.put("nativeCached", listNative.size());
+                channel1.invokeMethod(FacebookConstants.LOAD_SUCCESS_METHOD, args);
+            }
+
+            @Override
+            public void onAdClicked(Ad ad) {
+
+            }
+
+            @Override
+            public void onLoggingImpression(Ad ad) {
+
+            }
+        }).withMediaCacheFlag(NativeAdBase.MediaCacheFlag.ALL).build();
+
+        _nativeAd.loadAd(loadAdConfig);
     }
 
     private NativeAdViewAttributes getViewAttributes(Context context, HashMap args) {
@@ -140,8 +238,8 @@ class FacebookNativeAdView implements PlatformView, NativeAdListener {
     @Override
     public void onAdLoaded(Ad ad) {
         HashMap<String, Object> args = new HashMap<>();
-        args.put("placement_id", ad.getPlacementId());
-        args.put("invalidated", ad.isAdInvalidated());
+        args.put("nativeBannerCached", listBanner.size());
+        args.put("nativeCached", listNative.size());
         channel.invokeMethod(FacebookConstants.LOAD_SUCCESS_METHOD, args);
         adView.postDelayed(new Runnable() {
             @Override

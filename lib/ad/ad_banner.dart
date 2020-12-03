@@ -53,6 +53,8 @@ class FacebookBannerAd extends StatefulWidget {
   /// This defines if the ad view to be kept alive.
   final bool keepAlive;
 
+  int loaded = 0;
+
   /// This widget is used to contain Banner Ads. [listener] is used to monitor
   /// Banner Ad. [BannerAdResult] is passed to the callback function along with
   /// other information based on result such as placement id, error code, error
@@ -83,14 +85,15 @@ class FacebookBannerAd extends StatefulWidget {
 class _FacebookBannerAdState extends State<FacebookBannerAd>
     with AutomaticKeepAliveClientMixin {
   double containerHeight = 0.5;
+  Widget _widget;
 
   @override
   bool get wantKeepAlive => widget.keepAlive;
-
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return Container(
+      _widget = Container(
         height: containerHeight,
         color: Colors.transparent,
         child: AndroidView(
@@ -105,7 +108,7 @@ class _FacebookBannerAdState extends State<FacebookBannerAd>
         ),
       );
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      return Container(
+      _widget = Container(
         height: containerHeight,
         color: Colors.transparent,
         child: Container(
@@ -125,16 +128,21 @@ class _FacebookBannerAdState extends State<FacebookBannerAd>
         ),
       );
     } else {
-      return Container(
+      _widget = Container(
         height: widget.bannerSize.height <= -1
             ? double.infinity
             : widget.bannerSize.height.toDouble(),
         child: Center(
           child:
-              Text("Banner Ads for this platform is currently not supported"),
+          Text("Banner Ads for this platform is currently not supported"),
         ),
       );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _widget;
   }
 
   void _onBannerAdViewCreated(int id) async {
@@ -143,10 +151,14 @@ class _FacebookBannerAdState extends State<FacebookBannerAd>
     channel.setMethodCallHandler((MethodCall call) {
       switch (call.method) {
         case ERROR_METHOD:
+          widget.loaded = 2;
+          print("Fan banner fail");
           if (widget.listener != null)
             widget.listener(BannerAdResult.ERROR, call.arguments);
           break;
         case LOADED_METHOD:
+          widget.loaded = 1;
+          print("Fan banner success");
           setState(() {
             containerHeight = widget.bannerSize.height <= -1
                 ? double.infinity

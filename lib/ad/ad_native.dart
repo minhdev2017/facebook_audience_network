@@ -137,6 +137,7 @@ class _FacebookNativeAdState extends State<FacebookNativeAd>
     with AutomaticKeepAliveClientMixin {
   final double containerHeight = Platform.isAndroid ? 1.0 : 0.1;
   bool isAdReady = false;
+  int nativeCached = 1, nativeBannerCached = 1;
   @override
   bool get wantKeepAlive => widget.keepAlive;
 
@@ -182,13 +183,15 @@ class _FacebookNativeAdState extends State<FacebookNativeAd>
 
   Widget buildPlatformView(double width) {
     if (defaultTargetPlatform == TargetPlatform.android) {
+      var _h = widget.adType == NativeAdType.NATIVE_AD ||
+          widget.adType == NativeAdType.NATIVE_AD_HORIZONTAL ||
+          widget.adType == NativeAdType.NATIVE_AD_VERTICAL
+          ? widget.height
+          : widget.bannerAdSize.height.toDouble();
+      print("NativeBanner H $_h");
       return Container(
         width: width,
-        height: widget.adType == NativeAdType.NATIVE_AD ||
-                widget.adType == NativeAdType.NATIVE_AD_HORIZONTAL ||
-                widget.adType == NativeAdType.NATIVE_AD_VERTICAL
-            ? widget.height
-            : widget.bannerAdSize.height.toDouble(),
+        height:_h,
         child: AndroidView(
           viewType: NATIVE_AD_CHANNEL,
           onPlatformViewCreated: _onNativeAdViewCreated,
@@ -304,6 +307,9 @@ class _FacebookNativeAdState extends State<FacebookNativeAd>
           });*/
           break;
         case LOAD_SUCCESS_METHOD:
+          nativeBannerCached = call.arguments["nativeBannerCached"];
+          nativeCached = call.arguments["nativeCached"];
+          print(call.arguments);
           if (!mounted) return;
           if (!isAdReady) {
             setState(() {
