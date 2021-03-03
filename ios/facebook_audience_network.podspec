@@ -18,6 +18,7 @@ Facebook Audience Network plugin for Flutter application
   # s.dependency 'FBSDKCoreKit'
   # s.dependency 'FacebookSDK'
   s.dependency 'FBAudienceNetwork', '6.2.0'
+  s.dependency 'GoogleMobileAdsMediationFacebook'
 
   s.static_framework = true
   s.swift_version = '4.0'
